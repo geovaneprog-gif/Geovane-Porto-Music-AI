@@ -206,3 +206,4 @@ def get_midi(job_id: uuid.UUID, track: str):
     if not path.is_file():
         raise HTTPException(404, 'MIDI ainda não disponível')
     return FileResponse(path, media_type='audio/midi', filename=f'{job_id}-{track}.mid')
+ .  
