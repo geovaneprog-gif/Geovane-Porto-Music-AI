@@ -1,0 +1,50 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient, withXhr } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { App } from './app';
+
+describe('Produção musical', () => {
+  beforeEach(() => TestBed.configureTestingModule({imports: [App], providers: [provideHttpClient(withXhr()), provideHttpClientTesting()]}));
+  it('impede geração sem referência', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.generate();
+    expect(fixture.componentInstance.errorMessage).toContain('Selecione');
+    TestBed.inject(HttpTestingController).expectNone('http://127.0.0.1:8000/api/generate');
+  });
+  it('disponibiliza o player após a conclusão confirmada', async () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    app.lyrics = '[Verse] Teste';
+    app.selectedFile = new File(['audio'], 'reference.wav');
+    app.generate();
+    const http = TestBed.inject(HttpTestingController);
+    const request = http.expectOne('http://127.0.0.1:8000/api/generate');
+    expect(request.request.body.get('seed')).toBe('42');
+    expect(request.request.body.get('temperature')).toBe('0.8');
+    expect(request.request.body.get('max_duration')).toBe('320');
+    request.flush({job_id: 'test', status: 'completed', progress: 100, stage: 'Concluído', audio_url: '/api/audio/test'});
+    expect(app.generating).toBe(false);
+    expect(app.progress).toBe(100);
+    expect(app.audioUrl).toBe('http://127.0.0.1:8000/api/audio/test');
+    expect(app.tracks.length).toBe(1);
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('audio').getAttribute('src')).toBe(app.audioUrl);
+    app.search = 'não existe';
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.no-results')).not.toBeNull();
+    app.search = 'reference';
+    expect(app.filteredTracks.length).toBe(1);
+    app.view = 'library';
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.creation-panel')).toBeNull();
+    app.reset();
+    expect(app.tracks.length).toBe(1);
+    http.verify(); fixture.destroy();
+  });
+});
