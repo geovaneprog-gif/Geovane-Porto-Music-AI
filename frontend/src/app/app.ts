@@ -64,7 +64,7 @@ export class App implements OnDestroy {
   audioUrl: string | null = null;
 
   private readonly apiUrl =
-    'http://127.0.0.1:8000';
+  'https://maple-silver-sole-northern.trycloudflare.com';
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 

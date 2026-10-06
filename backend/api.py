@@ -65,18 +65,18 @@ def run_job(job_id, command, env, output_file):
 
 app = FastAPI(title="Geovane Porto Cover API")
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://127.0.0.1:4200"],
+    allow_origins=[
+        "https://silver-gelato-bd66f8.netlify.app",
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-MULACOVER_DIR = Path(os.getenv("MULACOVER_DIR", str(Path.home() / "Downloads/MuLaCover")))
-MULACOVER_BIN = MULACOVER_DIR / ".venv/bin/mulacover"
-MODEL_PATH = MULACOVER_DIR / "ckpt"
-
 APP_DIR = Path(os.getenv("COVER_APP_DIR", str(Path(__file__).resolve().parent.parent)))
 
 UPLOAD_DIR = APP_DIR / "uploads"
@@ -101,7 +101,7 @@ async def generate(
     lyrics: str = Form(...),
     tags: str = Form(...),
     seed: int = Form(42),
-    device: str = Form("mps"),
+device: str = Form("auto"),
     bpm: float = Form(0, ge=0, le=300),
     temperature: float = Form(0.8, ge=0.1, le=2),
     topk: int = Form(100, ge=1, le=8192),
@@ -131,8 +131,12 @@ async def generate(
     lyrics_file.write_text(lyrics, encoding="utf-8")
     tags_file.write_text(tags, encoding="utf-8")
 
-    if device not in {"mps", "cpu"}:
-        device = "mps"
+    if device == "auto":
+        device = os.getenv("DEFAULT_DEVICE", "mps")
+
+    if device not in {"cuda", "mps", "cpu"}:
+        device = os.getenv("DEFAULT_DEVICE", "mps")
+
 
     command = [
         str(MULACOVER_BIN),
@@ -206,4 +210,3 @@ def get_midi(job_id: uuid.UUID, track: str):
     if not path.is_file():
         raise HTTPException(404, 'MIDI ainda não disponível')
     return FileResponse(path, media_type='audio/midi', filename=f'{job_id}-{track}.mid')
- .  
